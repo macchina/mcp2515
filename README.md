@@ -1,4 +1,4 @@
 mcp2515
 =======
 
-Arduino library for the Microchip MCP2515 CAN controller
+Macchina library to facilitate CAN functionality with the onboard Microchip MCP2515 CAN controller
