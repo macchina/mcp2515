@@ -1,0 +1,60 @@
+#######################################
+# Syntax Coloring Map MCP2515
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+MCP2515	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+Init	KEYWORD2
+Reset	KEYWORD2
+Read	KEYWORD2
+ReadBuffer	KEYWORD2
+Write	KEYWORD2
+LoadBuffer	KEYWORD2
+SendBuffer	KEYWORD2
+Status	KEYWORD2
+RXStatus	KEYWORD2
+BitModify	KEYWORD2
+Interrupt	KEYWORD2
+Mode	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+CAN_RESET	LITERAL1
+CAN_READ	LITERAL1
+CAN_WRITE	LITERAL1
+CAN_RTS	LITERAL1
+CAN_STATUS	LITERAL1
+CAN_BIT_MODIFY	LITERAL1
+CAN_RX_STATUS	LITERAL1
+CAN_READ_BUFFER	LITERAL1
+CAN_LOAD_BUFFER	LITERAL1
+
+RXB0	LITERAL1
+RXB1	LITERAL1
+TXB0	LITERAL1
+TXB1	LITERAL1
+TXB2	LITERAL1
+TXB_ALL	LITERAL1
+
+MODE_CONFIG	LITERAL1
+MODE_LISTEN	LITERAL1
+MODE_LOOPBACK	LITERAL1
+MODE_SLEEP	LITERAL1
+MODE_NORMAL	LITERAL1
+
+RX0IF	LITERAL1
+RX1IF	LITERAL1
+TX0IF	LITERAL1
+TX1IF	LITERAL1
+TX2IF	LITERAL1
+ERRIF	LITERAL1
+WAKIF	LITERAL1
+MERRF	LITERAL1
