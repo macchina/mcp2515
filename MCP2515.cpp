@@ -59,7 +59,9 @@ MCP2515::MCP2515(byte CS_Pin, byte RESET_Pin, byte INT_Pin) {
 */
 int MCP2515::Init(int CAN_Bus_Speed, byte Freq) {
   if(CAN_Bus_Speed>0) {
-    if(_init(CAN_Bus_Speed, Freq, 1, false)) return CAN_Bus_Speed;
+    if(_init(CAN_Bus_Speed, Freq, 1, false)) {
+	    return CAN_Bus_Speed;
+    }
   } else {
 	int i=0;
 	byte interruptFlags = 0;
@@ -87,7 +89,9 @@ int MCP2515::Init(int CAN_Bus_Speed, byte Freq, byte SJW) {
   if(SJW < 1) SJW = 1;
   if(SJW > 4) SJW = 4;
   if(CAN_Bus_Speed>0) {
-    if(_init(CAN_Bus_Speed, Freq, SJW, false)) return CAN_Bus_Speed;
+    if(_init(CAN_Bus_Speed, Freq, SJW, false)) {
+	    return CAN_Bus_Speed;
+    }
   } else {
 	int i=0;
 	byte interruptFlags = 0;
@@ -259,6 +263,7 @@ void MCP2515::Write(byte address, byte data[], byte bytes) {
 
 void MCP2515::SendBuffer(byte buffers) {
   // buffers should be any combination of TXB0, TXB1, TXB2 ORed together, or TXB_ALL
+  digitalWrite(LED_CAN_TX, HIGH);
   digitalWrite(_CS,LOW);
   SPI.transfer(CAN_RTS | buffers);
   digitalWrite(_CS,HIGH);
@@ -267,7 +272,7 @@ void MCP2515::SendBuffer(byte buffers) {
 void MCP2515::LoadBuffer(byte buffer, Frame message) {
  
   // buffer should be one of TXB0, TXB1 or TXB2
-  if(buffer=TXB0) buffer = 0;
+  if(buffer==TXB0) buffer = 0;
 
   byte byte1=0; // TXBnSIDH
   byte byte2=0; // TXBnSIDL
@@ -377,4 +382,170 @@ bool MCP2515::Mode(byte mode) {
   delay(10); // allow for any transmissions to complete
   byte data = Read(CANSTAT); // check mode has been set
   return ((data & mode)==mode);
+}
+
+/*Initializes all filters to either accept all frames or accept none
+//This doesn't need to be called if you want to accept everything
+//because that's the default. So, call this with permissive = false
+//to state with an accept nothing state and then add acceptance masks/filters
+//thereafter 
+*/
+void MCP2515::InitFilters(bool permissive) {
+	long value;
+	if (permissive) {
+		value = 0;
+	}	
+	else {
+		value = 0x7FF; //all 11 bits set
+	}
+	SetRXMask(MASK0, value, 0);
+	SetRXMask(MASK1, value, 0);
+	SetRXFilter(FILTER0, value, 0);
+	SetRXFilter(FILTER1, value, 0);
+	SetRXFilter(FILTER2, value, 0);
+	SetRXFilter(FILTER3, value, 0);
+	SetRXFilter(FILTER4, value, 0);
+	SetRXFilter(FILTER5, value, 0);
+}
+
+/*
+mask = either MASK0 or MASK1
+MaskValue is either an 11 or 29 bit mask value to set
+ext is true if the mask is supposed to be extended (29 bit)
+*/
+void MCP2515::SetRXMask(byte mask, long MaskValue, bool ext) {
+	byte temp_buff[4];
+	
+	Mode(MODE_CONFIG); //have to be in config mode to change mask
+	
+	if (ext) { //fill out all 29 bits
+		temp_buff[0] = byte((MaskValue << 3) >> 24);
+		temp_buff[1] = byte((MaskValue << 11) >> 24) & B11100000;
+		temp_buff[1] |= byte((MaskValue << 14) >> 30);
+		temp_buff[2] = byte((MaskValue << 16)>>24);
+		temp_buff[3] = byte((MaskValue << 24)>>24);
+	}
+	else { //make sure to set mask as 11 bit standard mask
+		temp_buff[0] = byte((MaskValue << 21)>>24);
+		temp_buff[1] = byte((MaskValue << 29) >> 24) & B11100000;
+		temp_buff[2] = 0;
+		temp_buff[3] = 0;
+	}
+	
+	Write(mask, temp_buff, 4); //send the four byte mask out to the proper address
+	
+	Mode(MODE_NORMAL); //Maybe a good idea to figure out what old mode was and set back to that...
+}
+
+/*
+filter = FILTER0, FILTER1, FILTER2, FILTER3, FILTER4, FILTER5 (pick one)
+FilterValue = 11 or 29 bit filter to use
+ext is true if this filter should apply to extended frames or false if it should apply to standard frames.
+Do note that, while this function looks a lot like the mask setting function is is NOT identical
+It might be able to be though... The setting of EXIDE would probably just be ignored by the mask
+*/
+void MCP2515::SetRXFilter(byte filter, long FilterValue, bool ext) {
+	byte temp_buff[4];
+	
+	Mode(MODE_CONFIG); //have to be in config mode to change mask
+	
+	if (ext) { //fill out all 29 bits
+		temp_buff[0] = byte((FilterValue << 3) >> 24);
+		temp_buff[1] = byte((FilterValue << 11) >> 24) & B11100000;
+		temp_buff[1] |= byte((FilterValue << 14) >> 30);
+		temp_buff[1] |= B00001000; //set EXIDE
+		temp_buff[2] = byte((FilterValue << 16)>>24);
+		temp_buff[3] = byte((FilterValue << 24)>>24);
+	}
+	else { //make sure to set mask as 11 bit standard mask
+		temp_buff[0] = byte((FilterValue << 21)>>24);
+		temp_buff[1] = byte((FilterValue << 29) >> 24) & B11100000;
+		temp_buff[2] = 0;
+		temp_buff[3] = 0;
+	}
+	
+	Write(filter, temp_buff, 4); //send the four byte mask out to the proper address
+	
+	Mode(MODE_NORMAL); //Maybe a good idea to figure out what old mode was and set back to that...	
+}
+
+//Places the given frame into the receive queue
+void MCP2515::EnqueueRX(Frame& newFrame) {
+	byte counter;
+	rx_frames[rx_frame_write_pos].id = newFrame.id;
+	rx_frames[rx_frame_write_pos].srr = newFrame.srr;
+	rx_frames[rx_frame_write_pos].rtr = newFrame.rtr;
+	rx_frames[rx_frame_write_pos].ide = newFrame.ide;
+	rx_frames[rx_frame_write_pos].dlc = newFrame.dlc;
+	for (counter = 0; counter < 8; counter++) rx_frames[rx_frame_write_pos].data[counter] = newFrame.data[counter];
+	rx_frame_write_pos = (rx_frame_write_pos + 1) % 8;
+}
+
+//Places the given frame into the transmit queue
+void MCP2515::EnqueueTX(Frame& newFrame) {
+	byte counter;
+	tx_frames[tx_frame_write_pos].id = newFrame.id;
+	tx_frames[tx_frame_write_pos].srr = newFrame.srr;
+	tx_frames[tx_frame_write_pos].rtr = newFrame.rtr;
+	tx_frames[tx_frame_write_pos].ide = newFrame.ide;
+	tx_frames[tx_frame_write_pos].dlc = newFrame.dlc;
+	for (counter = 0; counter < 8; counter++) tx_frames[tx_frame_write_pos].data[counter] = newFrame.data[counter];
+	tx_frame_write_pos = (tx_frame_write_pos + 1) % 8;
+}
+
+bool MCP2515::GetRXFrame(Frame &frame) {
+	byte counter;
+	if (rx_frame_read_pos != rx_frame_write_pos) {
+		frame.id = rx_frames[rx_frame_read_pos].id;
+		frame.srr = rx_frames[rx_frame_read_pos].srr;
+		frame.rtr = rx_frames[rx_frame_read_pos].rtr;
+		frame.ide = rx_frames[rx_frame_read_pos].ide;
+		frame.dlc = rx_frames[rx_frame_read_pos].dlc;
+		for (counter = 0; counter < 8; counter++) frame.data[counter] = rx_frames[rx_frame_read_pos].data[counter];
+		rx_frame_read_pos = (rx_frame_read_pos + 1) % 8;
+		return true;
+	}
+	else return false;
+}
+
+void MCP2515::intHandler(void) {
+    Frame message;
+    // determine which interrupt flags have been set
+    byte interruptFlags = Read(CANINTF);
+    
+    if(interruptFlags & RX0IF) {
+      // read from RX buffer 0
+		digitalWrite(LED_CAN_RX, HIGH);
+		message = ReadBuffer(RXB0);
+     	EnqueueRX(message);
+    }
+    if(interruptFlags & RX1IF) {
+      // read from RX buffer 1
+	  digitalWrite(LED_CAN_RX, HIGH);
+      message = ReadBuffer(RXB1);
+      EnqueueRX(message);
+    }
+    if(interruptFlags & TX0IF) {
+	   digitalWrite(LED_CAN_TX, LOW);
+      // TX buffer 0 sent
+    }
+    if(interruptFlags & TX1IF) {
+		digitalWrite(LED_CAN_TX, LOW);
+      // TX buffer 1 sent
+    }
+    if(interruptFlags & TX2IF) {
+		digitalWrite(LED_CAN_TX, LOW);
+      // TX buffer 2 sent
+    }
+    if(interruptFlags & ERRIF) {
+      // error handling code
+    }
+    if(interruptFlags & MERRF) {
+      // error handling code
+      // if TXBnCTRL.TXERR set then transmission error
+      // if message is lost TXBnCTRL.MLOA will be set
+    }
+	//Now, acknowledge the interrupts by clearing the intf bits
+	Write(CANINTF, 0); 	
+	digitalWrite(LED_CAN_RX, LOW);
 }
