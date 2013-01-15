@@ -63,6 +63,13 @@ class MCP2515
 	//        reset the Arduino if the MCP2515 RESET pin has been tied
 	//        to the Arduino's reset.  Use SPI software Reset() instead!
 	bool Mode(byte mode); // Returns TRUE if mode change successful
+	void EnqueueRX(Frame& newFrame);
+	void EnqueueTX(Frame& newFrame);
+	bool GetRXFrame(Frame &frame);
+	void SetRXFilter(byte filter, long FilterValue, bool ext);
+	void SetRXMask(byte mask, long MaskValue, bool ext);
+	void InitFilters(bool permissive);
+	void intHandler();
 	
   private:
 	bool _init(int baud, byte freq, byte sjw, bool autoBaud);
@@ -70,6 +77,11 @@ class MCP2515
 	byte _CS;
 	byte _RESET;
 	byte _INT;
+    // Definitions for software buffers
+	volatile Frame rx_frames[8];
+	volatile Frame tx_frames[8];
+	volatile byte rx_frame_read_pos, rx_frame_write_pos;
+  	volatile byte tx_frame_read_pos, tx_frame_write_pos;
 };
 
 #endif
