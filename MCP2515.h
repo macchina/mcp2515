@@ -3,6 +3,7 @@
   
   Author: David Harding
   Maintainer: RechargeCar Inc (http://rechargecar.com)
+  Further Modification: Collin Kidder
   
   Created: 11/08/2010
   
@@ -77,6 +78,9 @@ class MCP2515
 	byte _CS;
 	byte _RESET;
 	byte _INT;
+	uint16_t savedBaud;
+	byte savedFreq;
+	byte running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
     // Definitions for software buffers
 	volatile Frame rx_frames[8];
 	volatile Frame tx_frames[8];
