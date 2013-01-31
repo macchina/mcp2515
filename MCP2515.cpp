@@ -47,8 +47,17 @@ MCP2515::MCP2515(byte CS_Pin, byte RESET_Pin, byte INT_Pin) {
   
   savedBaud = 0;
   savedFreq = 0;
-  running = 0;
+  running = 0; 
+  InitBuffers();
 }
+
+//set all buffer counters to zero to reset them
+void MCP2515::InitBuffers() {
+  rx_frame_read_pos = 0;
+  rx_frame_write_pos = 0;
+  tx_frame_read_pos = 0;
+  tx_frame_write_pos = 0;
+}  
 
 /*
   Initialize MCP2515
@@ -135,7 +144,7 @@ int MCP2515::Init(int CAN_Bus_Speed, byte Freq, byte SJW) {
 bool MCP2515::_init(int CAN_Bus_Speed, byte Freq, byte SJW, bool autoBaud) {
   
   // Reset MCP2515 which puts it in configuration mode
-  Reset();
+  Reset(1); //do a hard reset
   
   // Calculate bit timing registers
   byte BRP;
@@ -196,7 +205,7 @@ void MCP2515::Reset() {
 void MCP2515::Reset(byte hardReset) {
   // byte hardReset does nothing, it simply allows for a function overload
   digitalWrite(_RESET,LOW);
-  delay(1);
+  delay(3);
   digitalWrite(_RESET,HIGH);
 }
 
@@ -603,6 +612,8 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & ERRIF) {
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		  running = 0;
+		  delay(10); //just a bit of rate limiting to slow thrashing if canbus is dead
+		  InitBuffers();
 		  Init(savedBaud, savedFreq);
 	  }
     }
@@ -612,6 +623,8 @@ void MCP2515::intHandler(void) {
       // if message is lost TXBnCTRL.MLOA will be set
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		running = 0;
+		delay(10); //just a bit of rate limiting to slow thrashing if canbus is dead
+		InitBuffers();
 		Init(savedBaud, savedFreq);
 	  }	  
     }

@@ -71,6 +71,7 @@ class MCP2515
 	void SetRXMask(byte mask, long MaskValue, bool ext);
 	void InitFilters(bool permissive);
 	void intHandler();
+	void InitBuffers();
 	
   private:
 	bool _init(int baud, byte freq, byte sjw, bool autoBaud);
