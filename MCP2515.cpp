@@ -145,6 +145,11 @@ bool MCP2515::_init(int CAN_Bus_Speed, byte Freq, byte SJW, bool autoBaud) {
   
   // Reset MCP2515 which puts it in configuration mode
   Reset(1); //do a hard reset
+
+  Write(CANINTE,0); //disable all interrupts during init
+  Write(TXB0CTRL, 0); //reset transmit control
+  Write(TXB1CTRL, 0); //reset transmit control
+  Write(TXB2CTRL, 0); //reset transmit control
   
   // Calculate bit timing registers
   byte BRP;
@@ -569,6 +574,8 @@ void MCP2515::intHandler(void) {
     Frame message;
     // determine which interrupt flags have been set
     byte interruptFlags = Read(CANINTF);
+    //Now, acknowledge the interrupts by clearing the intf bits
+    Write(CANINTF, 0); 	
     
     if(interruptFlags & RX0IF) {
       // read from RX buffer 0
@@ -612,7 +619,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & ERRIF) {
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		  running = 0;
-		  delay(10); //just a bit of rate limiting to slow thrashing if canbus is dead
+  		  //Serial.print("y");
 		  InitBuffers();
 		  Init(savedBaud, savedFreq);
 	  }
@@ -623,12 +630,11 @@ void MCP2515::intHandler(void) {
       // if message is lost TXBnCTRL.MLOA will be set
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		running = 0;
-		delay(10); //just a bit of rate limiting to slow thrashing if canbus is dead
+		//Serial.print("x");
 		InitBuffers();
 		Init(savedBaud, savedFreq);
 	  }	  
     }
-	//Now, acknowledge the interrupts by clearing the intf bits
-	Write(CANINTF, 0); 	
-	digitalWrite(LED_CAN_RX, LOW);
+	
+    digitalWrite(LED_CAN_RX, LOW);
 }
