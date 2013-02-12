@@ -79,9 +79,9 @@ class MCP2515
 	byte _CS;
 	byte _RESET;
 	byte _INT;
-	uint16_t savedBaud;
-	byte savedFreq;
-	byte running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
+	volatile uint16_t savedBaud;
+	volatile byte savedFreq;
+	volatile byte running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
     // Definitions for software buffers
 	volatile Frame rx_frames[8];
 	volatile Frame tx_frames[8];

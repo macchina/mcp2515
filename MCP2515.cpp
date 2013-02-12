@@ -526,7 +526,9 @@ void MCP2515::EnqueueTX(Frame& newFrame) {
 	byte status = Status() & 0b01010100; //mask for only the transmit buffer empty bits
 	
 	//don't allow sending or queueing of frames if we're not properly initialized
-	if (running == 0) return;
+	if (running == 0) {
+		return;
+	}
 		
 	if (status != 0b01010100) { //found an open slot
 		if ((status & 0b00000100) == 0) { //transmit buffer 0 is open
@@ -619,7 +621,6 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & ERRIF) {
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		  running = 0;
-  		  //Serial.print("y");
 		  InitBuffers();
 		  Init(savedBaud, savedFreq);
 	  }
@@ -630,7 +631,6 @@ void MCP2515::intHandler(void) {
       // if message is lost TXBnCTRL.MLOA will be set
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		running = 0;
-		//Serial.print("x");
 		InitBuffers();
 		Init(savedBaud, savedFreq);
 	  }	  
