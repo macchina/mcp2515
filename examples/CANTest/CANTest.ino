@@ -67,6 +67,8 @@ void setup() {
 	CAN.InitFilters(false);
 	CAN.SetRXMask(MASK0, 0x7F0, 0); //match all but bottom four bits
 	CAN.SetRXFilter(FILTER0, 0x100, 0); //allows 0x100 - 0x10F
+	//So, this code will only accept frames with ID of 0x100 - 0x10F. All other frames
+	//will be ignored.
 
 	Serial.println("Ready ...");
 }
@@ -99,13 +101,12 @@ void loop() {
 
 		// Send out a return message for each one received
 		// Simply increment message id and data bytes to show proper transmission
-		// Note:  Please see explanation at top of sketch.  You might want to comment this out!
+		// Note: this will double the traffic on the network (provided it passes the filter above)
 		message.id++;
 		for(i=0;i<message.dlc;i++) {
 			message.data[i]++;
 		}
-		CAN.LoadBuffer(TXB0, message);
-		CAN.SendBuffer(TXB0);
+		CAN.EnqueueTX(message);
 	}
 }
 

@@ -3,6 +3,7 @@
   
   Author: David Harding
   Maintainer: RechargeCar Inc (http://rechargecar.com)
+  Further Modification: Collin Kidder
 
   Created: 11/08/2010
   
