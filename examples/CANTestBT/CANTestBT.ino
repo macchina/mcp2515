@@ -76,9 +76,10 @@ void setup() {
 	
   attachInterrupt(6, CANHandler, FALLING);
   CAN.InitFilters(false);
-  CAN.SetRXMask(MASK0, 0x7FF, 0); //match all but bottom four bits
-  CAN.SetRXFilter(FILTER0, 0x7E8, 0); //allows only 0x7E8, the PID Response
-  
+  CAN.SetRXMask(MASK0, 0x7F8, 0); //match all but bottom four bits
+  CAN.SetRXFilter(FILTER0, 0x7E8, 0); // Allows 0x7E8 through 0x7EF, 
+                                      // to allow responses from up to 8 ECUs,
+                                      // per the 2008 OBD requirements
 
   setupBlueToothConnection();
 
