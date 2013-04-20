@@ -78,8 +78,7 @@ void setup() {
   CAN.InitFilters(false);
   CAN.SetRXMask(MASK0, 0x7FF, 0); //match all but bottom four bits
   CAN.SetRXFilter(FILTER0, 0x7E8, 0); //allows only 0x7E8, the PID Response
-  // So, this code will only accept frames with ID of 0x100 - 0x10F. All other frames
-  // will be ignored.
+  
 
   setupBlueToothConnection();
 
