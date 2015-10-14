@@ -210,8 +210,8 @@ typedef struct
 
 //RX Mask 0
 #define MASK0		0x20
-#define RXM0SIDL	0x20
-#define RXM0SIDH	0x21
+#define RXM0SIDH	0x20
+#define RXM0SIDL	0x21
 #define RXM0EID8	0x22
 #define RXM0EID0	0x23
 
