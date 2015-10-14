@@ -217,8 +217,8 @@ typedef struct
 
 //RX Mask 1
 #define MASK1		0x24
-#define RXM1SIDL	0x24
-#define RXM1SIDH	0x25
+#define RXM1SIDH	0x24
+#define RXM1SIDL	0x25
 #define RXM1EID8	0x26
 #define RXM1EID0	0x27
 
