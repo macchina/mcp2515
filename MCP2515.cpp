@@ -284,7 +284,6 @@ void MCP2515::Write(uint8_t address, uint8_t data[], uint8_t bytes) {
 
 void MCP2515::SendBuffer(uint8_t buffers) {
   // buffers should be any combination of TXB0, TXB1, TXB2 ORed together, or TXB_ALL
-  digitalWrite(LED_CAN_TX, HIGH);
   digitalWrite(_CS,LOW);
   SPI.transfer(CAN_RTS | buffers);
   digitalWrite(_CS,HIGH);
@@ -571,19 +570,16 @@ void MCP2515::intHandler(void) {
     
     if(interruptFlags & RX0IF) {
       // read from RX buffer 0
-		digitalWrite(LED_CAN_RX, HIGH);
 		message = ReadBuffer(RXB0);
      	EnqueueRX(message);
     }
     if(interruptFlags & RX1IF) {
       // read from RX buffer 1
-	  digitalWrite(LED_CAN_RX, HIGH);
       message = ReadBuffer(RXB1);
       EnqueueRX(message);
     }
     if(interruptFlags & TX0IF) {
 		// TX buffer 0 sent
-	   digitalWrite(LED_CAN_TX, LOW);
        if (tx_frame_read_pos != tx_frame_write_pos) {
 			LoadBuffer(TXB0, tx_frames[tx_frame_read_pos]);
 		   	SendBuffer(TXB0);
@@ -592,7 +588,6 @@ void MCP2515::intHandler(void) {
     }
     if(interruptFlags & TX1IF) {
 		// TX buffer 1 sent
-	  digitalWrite(LED_CAN_TX, LOW);
 	  if (tx_frame_read_pos != tx_frame_write_pos) {
 		  LoadBuffer(TXB1, tx_frames[tx_frame_read_pos]);
 		  SendBuffer(TXB1);
@@ -601,7 +596,6 @@ void MCP2515::intHandler(void) {
     }
     if(interruptFlags & TX2IF) {
 		// TX buffer 2 sent
-		digitalWrite(LED_CAN_TX, LOW);
 		if (tx_frame_read_pos != tx_frame_write_pos) {
 			LoadBuffer(TXB2, tx_frames[tx_frame_read_pos]);
 			SendBuffer(TXB2);
@@ -626,5 +620,4 @@ void MCP2515::intHandler(void) {
 	  }	  
     }
 	
-    digitalWrite(LED_CAN_RX, LOW);
 }

@@ -230,7 +230,4 @@ typedef struct
 #define TXB2            0x04
 #define TXB_ALL			TXB0 | TXB1 | TXB2
 
-#define LED_CAN_RX		81
-#define LED_CAN_TX		82
-
 #endif
