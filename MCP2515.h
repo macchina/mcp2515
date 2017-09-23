@@ -38,7 +38,7 @@ class MCP2515
 {
   public:
 	// Constructor defining which pins to use for CS, RESET and INT
-    MCP2515(uint8_t CS_Pin, uint8_t RESET_Pin, uint8_t INT_Pin);
+    MCP2515(uint8_t CS_Pin, uint8_t INT_Pin);
 	
 	// Overloaded initialization function
 	int Init(uint32_t baud, uint8_t freq);
@@ -59,10 +59,6 @@ class MCP2515
 
 	// Extra functions
 	bool Interrupt(); // Expose state of INT pin
-    void Reset(byte hardReset); // Reset using RESET pin
-	// NOTE!  When using hardware reset on some boards this might also
-	//        reset the Arduino if the MCP2515 RESET pin has been tied
-	//        to the Arduino's reset.  Use SPI software Reset() instead!
 	bool Mode(uint8_t mode); // Returns TRUE if mode change successful
 	void EnqueueRX(Frame& newFrame);
 	void EnqueueTX(Frame& newFrame);
@@ -77,7 +73,6 @@ class MCP2515
 	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
     // Pin variables
 	uint8_t _CS;
-	uint8_t _RESET;
 	uint8_t _INT;
 	volatile uint16_t savedBaud;
 	volatile uint8_t savedFreq;

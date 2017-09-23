@@ -33,16 +33,13 @@
 #include "MCP2515.h"
 #include "MCP2515_defs.h"
 
-MCP2515::MCP2515(uint8_t CS_Pin, uint8_t RESET_Pin, uint8_t INT_Pin) {
+MCP2515::MCP2515(uint8_t CS_Pin, uint8_t INT_Pin) {
   pinMode(CS_Pin, OUTPUT);
   digitalWrite(CS_Pin,HIGH);
-  pinMode(RESET_Pin,OUTPUT);
-  digitalWrite(RESET_Pin,HIGH);
   pinMode(INT_Pin,INPUT);
   digitalWrite(INT_Pin,HIGH);
   
   _CS = CS_Pin;
-  _RESET = RESET_Pin;
   _INT = INT_Pin;
   
   savedBaud = 0;
@@ -144,7 +141,7 @@ int MCP2515::Init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW) {
 bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool autoBaud) {
   
   // Reset MCP2515 which puts it in configuration mode
-  Reset(1); //do a hard reset
+  Reset();
 
   Write(CANINTE,0); //disable all interrupts during init
   Write(TXB0CTRL, 0); //reset transmit control
@@ -205,13 +202,6 @@ void MCP2515::Reset() {
   digitalWrite(_CS,LOW);
   SPI.transfer(CAN_RESET);
   digitalWrite(_CS,HIGH);
-}
-
-void MCP2515::Reset(uint8_t hardReset) {
-  // byte hardReset does nothing, it simply allows for a function overload
-  digitalWrite(_RESET,LOW);
-  delay(3);
-  digitalWrite(_RESET,HIGH);
 }
 
 uint8_t MCP2515::Read(uint8_t address) {

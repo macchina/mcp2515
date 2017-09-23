@@ -31,11 +31,10 @@
 
 // Pin definitions specific to how the MCP2515 is wired up.
 #define CS_PIN    85
-#define RESET_PIN  7
 #define INT_PIN    84
 
 // Create CAN object with pins as defined
-MCP2515 CAN(CS_PIN, RESET_PIN, INT_PIN);
+MCP2515 CAN(CS_PIN, INT_PIN);
 
 void CANHandler() {
 	CAN.intHandler();
