@@ -174,12 +174,12 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   if(PHSEG2 <= SJW) return false;
   
   uint8_t BTLMODE = 1;
-  uint8_t SAM = 0;
+  uint8_t SAMPLE = 0;
   
   // Set registers
   byte data = (((SJW-1) << 6) | BRP);
   Write(CNF1, data);
-  Write(CNF2, ((BTLMODE << 7) | (SAM << 6) | ((PHSEG1-1) << 3) | (PRSEG-1)));
+  Write(CNF2, ((BTLMODE << 7) | (SAMPLE << 6) | ((PHSEG1-1) << 3) | (PRSEG-1)));
   Write(CNF3, (B10000000 | (PHSEG2-1)));
   Write(TXRTSCTRL,0);
   
