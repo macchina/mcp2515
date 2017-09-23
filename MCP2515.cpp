@@ -619,5 +619,95 @@ void MCP2515::intHandler(void) {
 		Init(savedBaud, savedFreq);
 	  }	  
     }
-	
+}
+
+int MCP2515::watchFor()
+{
+	SetRXMask(MASK0, 0, true);
+	SetRXMask(MASK1, 0, false);
+	SetRXFilter(FILTER0, 0, true);
+	SetRXFilter(FILTER2, 0, false);
+	return 0;
+}
+
+int MCP2515::watchFor(uint32_t id)
+{
+	if (id > 0x7FF) SetRXFilter(id, 0x1FFFFFFF, true);
+	else SetRXFilter(id, 0x7FF, false);
+	return 0;
+}
+
+int MCP2515::watchFor(uint32_t id, uint32_t mask)
+{
+	if (id > 0x7FF) SetRXFilter(id, mask, true);
+	else SetRXFilter(id, mask, false);
+	return 0;
+}
+
+int MCP2515::watchForRange(uint32_t id1, uint32_t id2)
+{
+	uint32_t id = 0;
+	uint32_t mask = 0;
+	uint32_t temp;
+
+	if (id1 > id2)
+	{   //looks funny I know. In place swap with no temporary storage. Neato!
+		id1 = id1 ^ id2;
+		id2 = id1 ^ id2; //note difference here.
+		id1 = id1 ^ id2;
+	}
+
+	id = id1;
+
+	if (id2 <= 0x7FF) mask = 0x7FF;
+	else mask = 0x1FFFFFFF;
+
+	/* Here is a quick overview of the theory behind these calculations.
+	   We start with mask set to 11 or 29 set bits (all 1's)
+	   and id set to the lowest ID in the range.
+	   From there we go through every single ID possible in the range. For each ID
+	   we AND with the current ID. At the end only bits that never changed and were 1's
+	   will still be 1's. This yields the ID we can match against to let these frames through
+	   The mask is calculated by finding the bitfield difference between the lowest ID and
+	   the current ID. This calculation will be 1 anywhere the bits were different. We invert
+	   this so that it is 1 anywhere the bits where the same. Then we AND with the current Mask.
+	   At the end the mask will be 1 anywhere the bits never changed. This is the perfect mask.
+	*/
+	for (int c = id1; c <= id2; c++)
+	{
+		id &= c;
+		temp = (~(id1 ^ c)) & 0x1FFFFFFF;
+		mask &= temp;
+	}
+	//output of the above crazy loop is actually the end result.
+	if (id > 0x7FF) SetRXFilter(id, mask, true);
+	else SetRXFilter(id, mask, false);
+	return 0;
+
+}
+/*
+void MCP2515::attachCANInterrupt(void (*cb)(CAN_FRAME *))
+{
+	cbCANFrame[6] = cb;
+}
+
+void MCP2515::attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *))
+{
+	if ((filter < 0) || (filter > 5)) return;
+	cbCANFrame[filter] = cb;
+}
+
+void MCP2515::detachCANInterrupt(uint8_t filter)
+{
+	if ((filter < 0) || (filter > 5)) return;
+	cbCANFrame[filter] = 0;
+}
+*/
+int MCP2515::available()
+{
+	int val;
+	val = rx_frame_read_pos - rx_frame_write_pos;
+	//Now, because this is a cyclic buffer it is possible that the ordering was reversed
+	//So, handle that case
+	if (val < 0) val += 8;
 }

@@ -68,7 +68,15 @@ class MCP2515
 	void InitFilters(bool permissive);
 	void intHandler();
 	void InitBuffers();
-	
+	int watchFor(); //allow anything through
+	int watchFor(uint32_t id); //allow just this ID through (automatic determination of extended status)
+	int watchFor(uint32_t id, uint32_t mask); //allow a range of ids through
+	int watchForRange(uint32_t id1, uint32_t id2); //try to allow the range from id1 to id2 - automatically determine base ID and mask
+	//void attachCANInterrupt(void (*cb)(CAN_FRAME *)); //alternative callname for setGeneralCallback
+	//void attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *));
+	//void detachCANInterrupt(uint8_t filter);
+	int available(); //like rx_avail but returns the number of waiting frames
+
   private:
 	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
     // Pin variables
@@ -82,6 +90,7 @@ class MCP2515
 	volatile Frame tx_frames[8];
 	volatile uint8_t rx_frame_read_pos, rx_frame_write_pos;
 	volatile uint8_t tx_frame_read_pos, tx_frame_write_pos;
+	//void (*cbCANFrame[7])(Frame *); //6 filters plus an optional catch all
 };
 
 #endif
