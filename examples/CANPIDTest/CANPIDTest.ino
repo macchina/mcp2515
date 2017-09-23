@@ -100,13 +100,12 @@ void setup() {
       // The following code sends a message out on the bus requesting a list of PIDS that the vehicle
       // computer supports in the 0x01 to 0x20 range.
       testMessage.id = 0x07DF;
-      testMessage.srr = 1;
       testMessage.rtr = 0;
-      testMessage.ide = 0;
-      testMessage.dlc = 3;
-      testMessage.data[0] = 0x02;  // Number of data bytes to follow
-      testMessage.data[1] = 0x01;  // Mode
-      testMessage.data[2] = 0x00;  // Requested PID. In this case, "PIDs supported, 0x01-0x20"
+      testMessage.extended = 0;
+      testMessage.length = 3;
+      testMessage.data.byte[0] = 0x02;  // Number of data bytes to follow
+      testMessage.data.byte[1] = 0x01;  // Mode
+      testMessage.data.byte[2] = 0x00;  // Requested PID. In this case, "PIDs supported, 0x01-0x20"
   
     CAN.EnqueueTX(testMessage);
 }
@@ -127,15 +126,15 @@ void loop() {
 		Serial.print("ID: ");
 		Serial.println(message.id,HEX);
 		Serial.print("Extended: ");
-		if(message.ide) {
+		if(message.extended) {
 			Serial.println("Yes");
 		} else {
 			Serial.println("No");
 		}
-		Serial.print("DLC: ");
-		Serial.println(message.dlc,DEC);
-		for(i=0;i<message.dlc;i++) {
-			Serial.print(message.data[i],HEX);
+		Serial.print("Length: ");
+		Serial.println(message.length,DEC);
+		for(i=0;i<message.length;i++) {
+			Serial.print(message.data.byte[i],HEX);
 			Serial.print(" ");
 		}
 		Serial.println();
@@ -146,14 +145,14 @@ void loop() {
                   txLEDState ^= 0x01;
                   digitalWrite(LED_CAN_TX, txLEDState);
                   
-                  switch (message.data[2]) {
+                  switch (message.data.byte[2]) {
                     case 0x05:  // Coolant Temp
-                      temp = message.data[3];
+                      temp = message.data.byte[3];
                       Serial.print("RPM is: ");
                       Serial.println(rpm);
                       break;
                     case 0x0C:  // Engine RPM
-                      rpm = ((unsigned int)message.data[4])>>2 + ((unsigned int)message.data[3])<<6;
+                      rpm = ((unsigned int)message.data.byte[4])>>2 + ((unsigned int)message.data.byte[3])<<6;
                       if(rpm > 2000) {
                         if((warningTimestamp - millis()) > 5000) {
                           warningTimestamp = millis();
@@ -163,14 +162,14 @@ void loop() {
                       Serial.println(rpm);
                       break;
                     case 0x0D:  // Vehicle Speed
-                      mph = message.data[3];
+                      mph = message.data.byte[3];
                       Serial.print("KPH is: ");
                       Serial.println(rpm);
                       break;
                     case 0x10:  // MAF Rate
                       break;
                     case 0x2F:  // Fuel Level Input
-                      fuel = message.data[3];
+                      fuel = message.data.byte[3];
                       Serial.print("Fuel is: ");
                       Serial.println(fuel);
                       break;

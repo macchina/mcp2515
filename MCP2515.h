@@ -51,7 +51,7 @@ class MCP2515
 	Frame ReadBuffer(uint8_t buffer);
 	void Write(uint8_t address, uint8_t data);
 	void Write(uint8_t address, uint8_t data[], uint8_t bytes);
-	void LoadBuffer(uint8_t buffer, Frame message);
+	void LoadBuffer(uint8_t buffer, Frame *message);
 	void SendBuffer(uint8_t buffers);
 	uint8_t Status();
 	uint8_t RXStatus();

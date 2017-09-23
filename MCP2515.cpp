@@ -249,10 +249,9 @@ Frame MCP2515::ReadBuffer(uint8_t buffer) {
   uint8_t byte4 = SPI.transfer(0x00); // RXBnEID0
   uint8_t byte5 = SPI.transfer(0x00); // RXBnDLC
 
-  message.srr=(byte2 & B00010000);
-  message.ide=(byte2 & B00001000);
+  message.extended = (byte2 & B00001000);
 
-  if(message.ide) {
+  if(message.extended) {
     message.id = (byte1>>3);
     message.id = (message.id<<8) | ((byte1<<5) | ((byte2>>5)<<2) | (byte2 & B00000011));
     message.id = (message.id<<8) | byte3;
@@ -305,7 +304,7 @@ void MCP2515::SendBuffer(uint8_t buffers) {
   SPI.endTransaction();
 }
 
-void MCP2515::LoadBuffer(uint8_t buffer, Frame message) {
+void MCP2515::LoadBuffer(uint8_t buffer, Frame *message) {
  
   // buffer should be one of TXB0, TXB1 or TXB2
   if(buffer==TXB0) buffer = 0; //the values we need are 0, 2, 4 TXB1 and TXB2 are already 2 / 4
@@ -316,21 +315,21 @@ void MCP2515::LoadBuffer(uint8_t buffer, Frame message) {
   uint8_t byte4=0; // TXBnEID0
   uint8_t byte5=0; // TXBnDLC
 
-  if(message.ide) {
-    byte1 = byte((message.id<<3)>>24); // 8 MSBits of SID
-	byte2 = byte((message.id<<11)>>24) & B11100000; // 3 LSBits of SID
-	byte2 = byte2 | byte((message.id<<14)>>30); // 2 MSBits of EID
+  if(message->extended) {
+    byte1 = byte((message->id<<3)>>24); // 8 MSBits of SID
+	byte2 = byte((message->id<<11)>>24) & B11100000; // 3 LSBits of SID
+	byte2 = byte2 | byte((message->id<<14)>>30); // 2 MSBits of EID
 	byte2 = byte2 | B00001000; // EXIDE
-    byte3 = byte((message.id<<16)>>24); // EID Bits 15-8
-    byte4 = byte((message.id<<24)>>24); // EID Bits 7-0
+    byte3 = byte((message->id<<16)>>24); // EID Bits 15-8
+    byte4 = byte((message->id<<24)>>24); // EID Bits 7-0
   } else {
-    byte1 = byte((message.id<<21)>>24); // 8 MSBits of SID
-	byte2 = byte((message.id<<29)>>24) & B11100000; // 3 LSBits of SID
+    byte1 = byte((message->id<<21)>>24); // 8 MSBits of SID
+	byte2 = byte((message->id<<29)>>24) & B11100000; // 3 LSBits of SID
     byte3 = 0; // TXBnEID8
     byte4 = 0; // TXBnEID0
   }
-  byte5 = message.dlc;
-  if(message.rtr) {
+  byte5 = message->length;
+  if(message->rtr) {
     byte5 = byte5 | B01000000;
   }
   
@@ -343,8 +342,8 @@ void MCP2515::LoadBuffer(uint8_t buffer, Frame message) {
   SPI.transfer(byte4);
   SPI.transfer(byte5);
  
-  for(int i=0;i<message.dlc;i++) {
-    SPI.transfer(message.data[i]);
+  for(int i=0;i<message->length;i++) {
+    SPI.transfer(message->data.byte[i]);
   }
   digitalWrite(_CS,HIGH);
   SPI.endTransaction();
@@ -522,11 +521,10 @@ void MCP2515::SetRXFilter(uint8_t filter, long FilterValue, bool ext) {
 void MCP2515::EnqueueRX(Frame& newFrame) {
 	uint8_t counter;
 	rx_frames[rx_frame_write_pos].id = newFrame.id;
-	rx_frames[rx_frame_write_pos].srr = newFrame.srr;
 	rx_frames[rx_frame_write_pos].rtr = newFrame.rtr;
-	rx_frames[rx_frame_write_pos].ide = newFrame.ide;
-	rx_frames[rx_frame_write_pos].dlc = newFrame.dlc;
-	for (counter = 0; counter < 8; counter++) rx_frames[rx_frame_write_pos].data[counter] = newFrame.data[counter];
+	rx_frames[rx_frame_write_pos].extended = newFrame.extended;
+	rx_frames[rx_frame_write_pos].length = newFrame.length;
+	for (counter = 0; counter < 8; counter++) rx_frames[rx_frame_write_pos].data.byte[counter] = newFrame.data.byte[counter];
 	rx_frame_write_pos = (rx_frame_write_pos + 1) % 8;
 }
 
@@ -545,26 +543,25 @@ void MCP2515::EnqueueTX(Frame& newFrame) {
 		
 	if (status != 0b01010100) { //found an open slot
 		if ((status & 0b00000100) == 0) { //transmit buffer 0 is open
-			LoadBuffer(TXB0, newFrame);
+			LoadBuffer(TXB0, &newFrame);
 			SendBuffer(TXB0);
 		}
 		else if ((status & 0b00010000) == 0) { //transmit buffer 1 is open
-			LoadBuffer(TXB1, newFrame);
+			LoadBuffer(TXB1, &newFrame);
 			SendBuffer(TXB1);
 		}
 		else { // must have been buffer 2 then.
-			LoadBuffer(TXB2, newFrame);
+			LoadBuffer(TXB2, &newFrame);
 			SendBuffer(TXB2);
 		}
 	}
 	else { //hardware is busy. queue it in software
 		if (tx_frame_write_pos != tx_frame_read_pos) { //don't add another frame if the buffer is already full
 			tx_frames[tx_frame_write_pos].id = newFrame.id;
-			tx_frames[tx_frame_write_pos].srr = newFrame.srr;
 			tx_frames[tx_frame_write_pos].rtr = newFrame.rtr;
-			tx_frames[tx_frame_write_pos].ide = newFrame.ide;
-			tx_frames[tx_frame_write_pos].dlc = newFrame.dlc;
-			for (counter = 0; counter < 8; counter++) tx_frames[tx_frame_write_pos].data[counter] = newFrame.data[counter];
+			tx_frames[tx_frame_write_pos].extended = newFrame.extended;
+			tx_frames[tx_frame_write_pos].length = newFrame.length;
+			for (counter = 0; counter < 8; counter++) tx_frames[tx_frame_write_pos].data.byte[counter] = newFrame.data.byte[counter];
 			tx_frame_write_pos = (tx_frame_write_pos + 1) % 8;
 		}		
 	}		
@@ -574,11 +571,10 @@ bool MCP2515::GetRXFrame(Frame &frame) {
 	uint8_t counter;
 	if (rx_frame_read_pos != rx_frame_write_pos) {
 		frame.id = rx_frames[rx_frame_read_pos].id;
-		frame.srr = rx_frames[rx_frame_read_pos].srr;
 		frame.rtr = rx_frames[rx_frame_read_pos].rtr;
-		frame.ide = rx_frames[rx_frame_read_pos].ide;
-		frame.dlc = rx_frames[rx_frame_read_pos].dlc;
-		for (counter = 0; counter < 8; counter++) frame.data[counter] = rx_frames[rx_frame_read_pos].data[counter];
+		frame.extended = rx_frames[rx_frame_read_pos].extended;
+		frame.length = rx_frames[rx_frame_read_pos].length;
+		for (counter = 0; counter < 8; counter++) frame.data.byte[counter] = rx_frames[rx_frame_read_pos].data.byte[counter];
 		rx_frame_read_pos = (rx_frame_read_pos + 1) % 8;
 		return true;
 	}
@@ -605,7 +601,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX0IF) {
 		// TX buffer 0 sent
        if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB0, tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB0, (Frame *)&tx_frames[tx_frame_read_pos]);
 		   	SendBuffer(TXB0);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	   }
@@ -613,7 +609,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX1IF) {
 		// TX buffer 1 sent
 	  if (tx_frame_read_pos != tx_frame_write_pos) {
-		  LoadBuffer(TXB1, tx_frames[tx_frame_read_pos]);
+		  LoadBuffer(TXB1, (Frame *)&tx_frames[tx_frame_read_pos]);
 		  SendBuffer(TXB1);
 		  tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	  }
@@ -621,7 +617,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX2IF) {
 		// TX buffer 2 sent
 		if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB2, tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB2, (Frame *)&tx_frames[tx_frame_read_pos]);
 			SendBuffer(TXB2);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 		}

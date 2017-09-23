@@ -84,15 +84,15 @@ void loop() {
 		Serial.print("ID: ");
 		Serial.println(message.id,HEX);
 		Serial.print("Extended: ");
-		if(message.ide) {
+		if(message.extended) {
 			Serial.println("Yes");
 		} else {
 			Serial.println("No");
 		}
-		Serial.print("DLC: ");
-		Serial.println(message.dlc,DEC);
-		for(i=0;i<message.dlc;i++) {
-			Serial.print(message.data[i],HEX);
+		Serial.print("Length: ");
+		Serial.println(message.length,DEC);
+		for(i=0;i<message.length;i++) {
+			Serial.print(message.data.byte[i],HEX);
 			Serial.print(" ");
 		}
 		Serial.println();
@@ -102,8 +102,8 @@ void loop() {
 		// Simply increment message id and data bytes to show proper transmission
 		// Note: this will double the traffic on the network (provided it passes the filter above)
 		message.id++;
-		for(i=0;i<message.dlc;i++) {
-			message.data[i]++;
+		for(i=0;i<message.length;i++) {
+			message.data.byte[i]++;
 		}
 		CAN.EnqueueTX(message);
 	}
