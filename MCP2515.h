@@ -38,55 +38,59 @@ class MCP2515
 {
   public:
 	// Constructor defining which pins to use for CS, RESET and INT
-    MCP2515(byte CS_Pin, byte RESET_Pin, byte INT_Pin);
+    MCP2515(uint8_t CS_Pin, uint8_t INT_Pin);
 	
 	// Overloaded initialization function
-	int Init(int baud, byte freq);
-	int Init(int baud, byte freq, byte sjw);
+	int Init(uint32_t baud, uint8_t freq);
+	int Init(uint32_t baud, uint8_t freq, uint8_t sjw);
 	
 	// Basic MCP2515 SPI Command Set
     void Reset();
-    byte Read(byte address);
-    void Read(byte address, byte data[], byte bytes);
-	Frame ReadBuffer(byte buffer);
-	void Write(byte address, byte data);
-	void Write(byte address, byte data[], byte bytes);
-	void LoadBuffer(byte buffer, Frame message);
-	void SendBuffer(byte buffers);
-	byte Status();
-	byte RXStatus();
-	void BitModify(byte address, byte mask, byte data);
+    byte Read(uint8_t address);
+    void Read(uint8_t address, uint8_t data[], uint8_t bytes);
+	Frame ReadBuffer(uint8_t buffer);
+	void Write(uint8_t address, uint8_t data);
+	void Write(uint8_t address, uint8_t data[], uint8_t bytes);
+	void LoadBuffer(uint8_t buffer, Frame *message);
+	void SendBuffer(uint8_t buffers);
+	uint8_t Status();
+	uint8_t RXStatus();
+	void BitModify(uint8_t address, uint8_t mask, uint8_t data);
 
 	// Extra functions
 	bool Interrupt(); // Expose state of INT pin
-    void Reset(byte hardReset); // Reset using RESET pin
-	// NOTE!  When using hardware reset on some boards this might also
-	//        reset the Arduino if the MCP2515 RESET pin has been tied
-	//        to the Arduino's reset.  Use SPI software Reset() instead!
-	bool Mode(byte mode); // Returns TRUE if mode change successful
+	bool Mode(uint8_t mode); // Returns TRUE if mode change successful
 	void EnqueueRX(Frame& newFrame);
 	void EnqueueTX(Frame& newFrame);
 	bool GetRXFrame(Frame &frame);
-	void SetRXFilter(byte filter, long FilterValue, bool ext);
-	void SetRXMask(byte mask, long MaskValue, bool ext);
+	void SetRXFilter(uint8_t filter, long FilterValue, bool ext);
+	void SetRXMask(uint8_t mask, long MaskValue, bool ext);
 	void InitFilters(bool permissive);
 	void intHandler();
 	void InitBuffers();
-	
+	int watchFor(); //allow anything through
+	int watchFor(uint32_t id); //allow just this ID through (automatic determination of extended status)
+	int watchFor(uint32_t id, uint32_t mask); //allow a range of ids through
+	int watchForRange(uint32_t id1, uint32_t id2); //try to allow the range from id1 to id2 - automatically determine base ID and mask
+	//void attachCANInterrupt(void (*cb)(CAN_FRAME *)); //alternative callname for setGeneralCallback
+	//void attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *));
+	//void detachCANInterrupt(uint8_t filter);
+	int available(); //like rx_avail but returns the number of waiting frames
+
   private:
-	bool _init(int baud, byte freq, byte sjw, bool autoBaud);
+	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
     // Pin variables
-	byte _CS;
-	byte _RESET;
-	byte _INT;
+	uint8_t _CS;
+	uint8_t _INT;
 	volatile uint16_t savedBaud;
-	volatile byte savedFreq;
-	volatile byte running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
+	volatile uint8_t savedFreq;
+	volatile uint8_t running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
     // Definitions for software buffers
 	volatile Frame rx_frames[8];
 	volatile Frame tx_frames[8];
-	volatile byte rx_frame_read_pos, rx_frame_write_pos;
-  	volatile byte tx_frame_read_pos, tx_frame_write_pos;
+	volatile uint8_t rx_frame_read_pos, rx_frame_write_pos;
+	volatile uint8_t tx_frame_read_pos, tx_frame_write_pos;
+	//void (*cbCANFrame[7])(Frame *); //6 filters plus an optional catch all
 };
 
 #endif
