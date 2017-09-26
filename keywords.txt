@@ -23,6 +23,16 @@ RXStatus	KEYWORD2
 BitModify	KEYWORD2
 Interrupt	KEYWORD2
 Mode	KEYWORD2
+EnqueueRX	KEYWORD2
+EnqueueTX	KEYWORD2
+GetRXFrame	KEYWORD2
+SetRXFilter	KEYWORD2
+InitFilters	KEYWORD2
+intHandler	KEYWORD2
+InitBuffers	KEYWORD2
+watchFor	KEYWORD2
+watchForRange	KEYWORD2
+available	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
