@@ -225,15 +225,15 @@ typedef struct
 
 //RX Mask 0
 #define MASK0		0x20
-#define RXM0SIDL	0x20
-#define RXM0SIDH	0x21
+#define RXM0SIDH	0x20
+#define RXM0SIDL	0x21
 #define RXM0EID8	0x22
 #define RXM0EID0	0x23
 
 //RX Mask 1
 #define MASK1		0x24
-#define RXM1SIDL	0x24
-#define RXM1SIDH	0x25
+#define RXM1SIDH	0x24
+#define RXM1SIDL	0x25
 #define RXM1EID8	0x26
 #define RXM1EID0	0x27
 
