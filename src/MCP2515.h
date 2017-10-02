@@ -34,6 +34,8 @@
 #include "Arduino.h"
 #include "MCP2515_defs.h"
 
+//#define DEBUG_SETUP
+
 class MCP2515
 {
   public:

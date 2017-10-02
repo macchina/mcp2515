@@ -61,7 +61,7 @@ void MCP2515::InitBuffers() {
 /*
   Initialize MCP2515
   
-  int CAN_Bus_Speed = transfer speed in kbps
+  int CAN_Bus_Speed = transfer speed in kbps (or raw CAN speed in bits per second)
   int Freq = MCP2515 oscillator frequency in MHz
   int SJW = Synchronization Jump Width Length bits - 1 to 4 (see data sheet)
   
@@ -155,25 +155,70 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   float TQ;
   uint8_t BT;
   float tempBT;
+  float freqMhz = Freq * 1000000.0;
+  float bestMatchf = 10.0;
+  int bestMatchIdx = 10;
+  float savedBT;
 
-  float NBT = 1.0 / (float)CAN_Bus_Speed * 1000.0; // Nominal Bit Time
-  for(BRP=0;BRP<8;BRP++) {
-    TQ = 2.0 * (float)(BRP + 1) / (float)Freq;
+  float speed = CAN_Bus_Speed;
+  if (speed > 5000.0) speed *= 0.001;
+
+  float NBT = 1.0 / (speed * 1000.0); // Nominal Bit Time - How long a single CAN bit should take
+
+  //Now try each divisor to see which can most closely match the target.
+  for(BRP=0; BRP < 63; BRP++) {
+    TQ = 2.0 * (float)(BRP + 1) / (float)freqMhz;
     tempBT = NBT / TQ;
-	if(tempBT<=25) {
-	  BT = (int)tempBT;
-	  if(tempBT-BT==0) break;
-	}
+#ifdef DEBUG_SETUP
+    SerialUSB.print("BRP: ");
+    SerialUSB.print(BRP);
+    SerialUSB.print("  tempBT: ");
+    SerialUSB.println(tempBT);
+#endif
+    BT = (int)tempBT;
+    if ( (tempBT - BT) < bestMatchf)
+    {
+        if (BT > 7 && BT < 25)
+        {
+            bestMatchf = (tempBT - BT);
+            bestMatchIdx = BRP;
+            savedBT = BT;
+        }
+    }
   }
+
+  BT = savedBT;
+  BRP = bestMatchIdx;
+#ifdef DEBUG_SETUP  
+  SerialUSB.print("BRP: ");
+  SerialUSB.print(BRP);
+  SerialUSB.print("  BT: ");
+  SerialUSB.println(BT);
+#endif
   
   byte SPT = (0.7 * BT); // Sample point
   byte PRSEG = (SPT - 1) / 2;
   byte PHSEG1 = SPT - PRSEG - 1;
   byte PHSEG2 = BT - PHSEG1 - PRSEG - 1;
-
+#ifdef DEBUG_SETUP
+  SerialUSB.print("PROP: ");
+  SerialUSB.print(PRSEG);
+  SerialUSB.print("  SEG1: ");
+  SerialUSB.print(PHSEG1);
+  SerialUSB.print("  SEG2: ");
+  SerialUSB.println(PHSEG2);
+#endif
   // Programming requirements
-  if(PRSEG + PHSEG1 < PHSEG2) return false;
-  if(PHSEG2 <= SJW) return false;
+  if(PRSEG + PHSEG1 < PHSEG2) 
+  {
+      SerialUSB.println("PRSEG + PHSEG1 less than PHSEG2!");
+      return false;
+  }
+  if(PHSEG2 <= SJW) 
+  {
+      SerialUSB.println("PHSEG2 less than SJW");
+      return false;
+  }
   
   uint8_t BTLMODE = 1;
   uint8_t SAMPLE = 0;
@@ -187,17 +232,33 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   
   if(!autoBaud) {
     // Return to Normal mode
-	if(!Mode(MODE_NORMAL)) return false;
+    if(!Mode(MODE_NORMAL)) 
+    {
+        SerialUSB.println("Could not enter normal mode");
+        return false;
+    }
   } else {
     // Set to Listen Only mode
-	if(!Mode(MODE_LISTEN)) return false;
+    if(!Mode(MODE_LISTEN)) 
+    {
+        SerialUSB.println("Could not enter listen only mode");
+        return false;
+    }
   }
   // Enable all interupts
   Write(CANINTE,255);
   
   // Test that we can read back from the MCP2515 what we wrote to it
   byte rtn = Read(CNF1);
-  return (rtn==data);
+  if (rtn == data) return true;
+  else 
+  {
+    SerialUSB.println(data, HEX);
+    SerialUSB.println(rtn, HEX);
+    return false;
+  }
+
+  return false;
 }
 
 void MCP2515::Reset() {
