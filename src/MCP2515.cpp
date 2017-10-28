@@ -686,8 +686,8 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & ERRIF) {
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		  running = 0;
-		  InitBuffers();
-		  Init(savedBaud, savedFreq);
+		  //InitBuffers();
+		  //Init(savedBaud, savedFreq);
 	  }
     }
     if(interruptFlags & MERRF) {
@@ -696,8 +696,8 @@ void MCP2515::intHandler(void) {
       // if message is lost TXBnCTRL.MLOA will be set
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		running = 0;
-		InitBuffers();
-		Init(savedBaud, savedFreq);
+		//InitBuffers();
+		//Init(savedBaud, savedFreq);
 	  }	  
     }
 }
