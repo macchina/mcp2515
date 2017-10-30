@@ -33,6 +33,7 @@
 
 #include "Arduino.h"
 #include "MCP2515_defs.h"
+#include <can_common.h>
 
 //#define DEBUG_SETUP
 
@@ -50,10 +51,10 @@ class MCP2515
     void Reset();
     byte Read(uint8_t address);
     void Read(uint8_t address, uint8_t data[], uint8_t bytes);
-	Frame ReadBuffer(uint8_t buffer);
+	CAN_FRAME ReadBuffer(uint8_t buffer);
 	void Write(uint8_t address, uint8_t data);
 	void Write(uint8_t address, uint8_t data[], uint8_t bytes);
-	void LoadBuffer(uint8_t buffer, Frame *message);
+	void LoadBuffer(uint8_t buffer, CAN_FRAME *message);
 	void SendBuffer(uint8_t buffers);
 	uint8_t Status();
 	uint8_t RXStatus();
@@ -62,9 +63,9 @@ class MCP2515
 	// Extra functions
 	bool Interrupt(); // Expose state of INT pin
 	bool Mode(uint8_t mode); // Returns TRUE if mode change successful
-	void EnqueueRX(Frame& newFrame);
-	void EnqueueTX(Frame& newFrame);
-	bool GetRXFrame(Frame &frame);
+	void EnqueueRX(CAN_FRAME& newFrame);
+	void EnqueueTX(CAN_FRAME& newFrame);
+	bool GetRXFrame(CAN_FRAME &frame);
 	void SetRXFilter(uint8_t filter, long FilterValue, bool ext);
 	void SetRXMask(uint8_t mask, long MaskValue, bool ext);
 	void InitFilters(bool permissive);
@@ -88,11 +89,11 @@ class MCP2515
 	volatile uint8_t savedFreq;
 	volatile uint8_t running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
     // Definitions for software buffers
-	volatile Frame rx_frames[8];
-	volatile Frame tx_frames[8];
+	volatile CAN_FRAME rx_frames[8];
+	volatile CAN_FRAME tx_frames[8];
 	volatile uint8_t rx_frame_read_pos, rx_frame_write_pos;
 	volatile uint8_t tx_frame_read_pos, tx_frame_write_pos;
-	//void (*cbCANFrame[7])(Frame *); //6 filters plus an optional catch all
+	//void (*cbCANFrame[7])(CAN_FRAME *); //6 filters plus an optional catch all
 };
 
 #endif

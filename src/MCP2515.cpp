@@ -294,12 +294,12 @@ void MCP2515::Read(uint8_t address, uint8_t data[], uint8_t bytes) {
   SPI.endTransaction();
 }
 
-Frame MCP2515::ReadBuffer(uint8_t buffer) {
+CAN_FRAME MCP2515::ReadBuffer(uint8_t buffer) {
  
   // Reads an entire RX buffer.
   // buffer should be either RXB0 or RXB1
   
-  Frame message;
+  CAN_FRAME message;
   
   SPI.beginTransaction(canSPISettings);
   digitalWrite(_CS,LOW);
@@ -365,7 +365,7 @@ void MCP2515::SendBuffer(uint8_t buffers) {
   SPI.endTransaction();
 }
 
-void MCP2515::LoadBuffer(uint8_t buffer, Frame *message) {
+void MCP2515::LoadBuffer(uint8_t buffer, CAN_FRAME *message) {
  
   // buffer should be one of TXB0, TXB1 or TXB2
   if(buffer==TXB0) buffer = 0; //the values we need are 0, 2, 4 TXB1 and TXB2 are already 2 / 4
@@ -579,7 +579,7 @@ void MCP2515::SetRXFilter(uint8_t filter, long FilterValue, bool ext) {
 }
 
 //Places the given frame into the receive queue
-void MCP2515::EnqueueRX(Frame& newFrame) {
+void MCP2515::EnqueueRX(CAN_FRAME& newFrame) {
 	uint8_t counter;
 	rx_frames[rx_frame_write_pos].id = newFrame.id;
 	rx_frames[rx_frame_write_pos].rtr = newFrame.rtr;
@@ -593,7 +593,7 @@ void MCP2515::EnqueueRX(Frame& newFrame) {
 //Well, maybe. If there is currently an open hardware buffer
 //it will place it into hardware immediately instead of using
 //the software queue
-void MCP2515::EnqueueTX(Frame& newFrame) {
+void MCP2515::EnqueueTX(CAN_FRAME& newFrame) {
 	uint8_t counter;
 	uint8_t status = Status() & 0b01010100; //mask for only the transmit buffer empty bits
 	
@@ -628,7 +628,7 @@ void MCP2515::EnqueueTX(Frame& newFrame) {
 	}		
 }
 
-bool MCP2515::GetRXFrame(Frame &frame) {
+bool MCP2515::GetRXFrame(CAN_FRAME &frame) {
 	uint8_t counter;
 	if (rx_frame_read_pos != rx_frame_write_pos) {
 		frame.id = rx_frames[rx_frame_read_pos].id;
@@ -643,7 +643,7 @@ bool MCP2515::GetRXFrame(Frame &frame) {
 }
 
 void MCP2515::intHandler(void) {
-    Frame message;
+    CAN_FRAME message;
     // determine which interrupt flags have been set
     uint8_t interruptFlags = Read(CANINTF);
     //Now, acknowledge the interrupts by clearing the intf bits
@@ -662,7 +662,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX0IF) {
 		// TX buffer 0 sent
        if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB0, (Frame *)&tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB0, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 		   	SendBuffer(TXB0);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	   }
@@ -670,7 +670,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX1IF) {
 		// TX buffer 1 sent
 	  if (tx_frame_read_pos != tx_frame_write_pos) {
-		  LoadBuffer(TXB1, (Frame *)&tx_frames[tx_frame_read_pos]);
+		  LoadBuffer(TXB1, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 		  SendBuffer(TXB1);
 		  tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	  }
@@ -678,7 +678,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX2IF) {
 		// TX buffer 2 sent
 		if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB2, (Frame *)&tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB2, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 			SendBuffer(TXB2);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 		}

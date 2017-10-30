@@ -33,32 +33,6 @@
 
 #include "Arduino.h"
 
-//presupposes little endian mode. You will need to correct this if you port to a big endian processor.
-typedef union {
-    uint64_t value;
-	struct {
-		uint32_t low;
-		uint32_t high;
-	};
-	struct {
-		uint16_t s0;
-		uint16_t s1;
-		uint16_t s2;
-		uint16_t s3;
-    };
-	uint8_t bytes[8];
-	uint8_t byte[8]; //alternate name so you can omit the s if you feel it makes more sense
-} DataUnion;
-
-typedef struct
-{
-	uint32_t id;		// EID if ide set, SID otherwise
-	uint8_t rtr;		// Remote Transmission Request
-	uint8_t extended;	// Extended ID flag
-	uint8_t length;		// Number of data bytes
-	DataUnion data;	// 64 bits - lots of ways to access it.
-} Frame;
-
 // MCP2515 SPI Commands
 #define CAN_RESET       0xC0
 #define CAN_READ        0x03
