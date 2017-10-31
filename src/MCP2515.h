@@ -37,7 +37,7 @@
 
 //#define DEBUG_SETUP
 
-class MCP2515
+class MCP2515 : public CAN_COMMON
 {
   public:
 	// Constructor defining which pins to use for CS, RESET and INT
@@ -46,6 +46,26 @@ class MCP2515
 	// Overloaded initialization function
 	int Init(uint32_t baud, uint8_t freq);
 	int Init(uint32_t baud, uint8_t freq, uint8_t sjw);
+
+
+    //block of functions which must be overriden from CAN_COMMON to implement functionality for this hardware
+    int setRXFilter(uint32_t id, uint32_t mask, bool extended);
+	int setRXFilter(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended);
+	int watchFor(); //allow anything through
+	uint32_t init(uint32_t ul_baudrate);
+	uint32_t begin(uint32_t baudrate, uint8_t enablePin);
+    uint32_t beginAutoSpeed();
+    uint32_t beginAutoSpeed(uint8_t enablePin);
+    uint32_t set_baudrate(uint32_t ul_baudrate);
+	void enable();
+	void disable();
+	bool sendFrame(CAN_FRAME& txFrame);
+	void setCallback(uint8_t mailbox, void (*cb)(CAN_FRAME *));
+	void attachCANInterrupt(uint8_t mailBox, void (*cb)(CAN_FRAME *));
+	void detachCANInterrupt(uint8_t mailBox);
+	bool rx_avail();
+	uint16_t available(); //like rx_avail but returns the number of waiting frames
+	uint32_t get_rx_buff(CAN_FRAME &msg);
 	
 	// Basic MCP2515 SPI Command Set
     void Reset();
@@ -71,15 +91,6 @@ class MCP2515
 	void InitFilters(bool permissive);
 	void intHandler();
 	void InitBuffers();
-	int watchFor(); //allow anything through
-	int watchFor(uint32_t id); //allow just this ID through (automatic determination of extended status)
-	int watchFor(uint32_t id, uint32_t mask); //allow a range of ids through
-	int watchForRange(uint32_t id1, uint32_t id2); //try to allow the range from id1 to id2 - automatically determine base ID and mask
-	//void attachCANInterrupt(void (*cb)(CAN_FRAME *)); //alternative callname for setGeneralCallback
-	//void attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *));
-	//void detachCANInterrupt(uint8_t filter);
-	int available(); //like rx_avail but returns the number of waiting frames
-
   private:
 	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
     // Pin variables
