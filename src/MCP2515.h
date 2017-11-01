@@ -57,12 +57,10 @@ class MCP2515 : public CAN_COMMON
     uint32_t beginAutoSpeed();
     uint32_t beginAutoSpeed(uint8_t enablePin);
     uint32_t set_baudrate(uint32_t ul_baudrate);
+    void setListenOnlyMode(bool state);
 	void enable();
 	void disable();
 	bool sendFrame(CAN_FRAME& txFrame);
-	void setCallback(uint8_t mailbox, void (*cb)(CAN_FRAME *));
-	void attachCANInterrupt(uint8_t mailBox, void (*cb)(CAN_FRAME *));
-	void detachCANInterrupt(uint8_t mailBox);
 	bool rx_avail();
 	uint16_t available(); //like rx_avail but returns the number of waiting frames
 	uint32_t get_rx_buff(CAN_FRAME &msg);
@@ -87,12 +85,16 @@ class MCP2515 : public CAN_COMMON
 	void EnqueueTX(CAN_FRAME& newFrame);
 	bool GetRXFrame(CAN_FRAME &frame);
 	void SetRXFilter(uint8_t filter, long FilterValue, bool ext);
-	void SetRXMask(uint8_t mask, long MaskValue, bool ext);
+	void SetRXMask(uint8_t mask, long MaskValue);
+    void GetRXFilter(uint8_t filter, uint32_t &filterVal, boolean &isExtended);
+    void GetRXMask(uint8_t mask, uint32_t &filterVal);
+
 	void InitFilters(bool permissive);
 	void intHandler();
 	void InitBuffers();
   private:
 	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
+    void handleFrameDispatch(CAN_FRAME *frame, int filterHit);
     // Pin variables
 	uint8_t _CS;
 	uint8_t _INT;
