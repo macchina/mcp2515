@@ -261,15 +261,6 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   return false;
 }
 
-int MCP2515::watchFor()
-{
-	SetRXMask(MASK0, 0);
-	SetRXMask(MASK1, 0);
-	SetRXFilter(FILTER0, 0, true);
-	SetRXFilter(FILTER2, 0, false);
-	return 0;
-}
-
 uint16_t MCP2515::available()
 {
 	int val;
@@ -279,7 +270,7 @@ uint16_t MCP2515::available()
 	if (val < 0) val += 8;
 }
 
-int MCP2515::setRXFilter(uint32_t id, uint32_t mask, bool extended)
+int MCP2515::_setFilter(uint32_t id, uint32_t mask, bool extended)
 {
     uint32_t filterVal;
     boolean isExtended;
@@ -316,7 +307,7 @@ int MCP2515::setRXFilter(uint32_t id, uint32_t mask, bool extended)
 }
 
 //we don't exactly have mailboxes, we have filters (6 of them) but it's the same basic idea
-int MCP2515::setRXFilter(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended)
+int MCP2515::_setFilterSpecific(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended)
 {
     uint32_t oldMask;
     if (mailbox < 2) //MASK0
@@ -344,18 +335,7 @@ uint32_t MCP2515::init(uint32_t ul_baudrate)
     Init(ul_baudrate, 16);
 }
 
-uint32_t MCP2515::begin(uint32_t baudrate, uint8_t enablePin)
-{
-    Init(baudrate, 16);
-}
-
 uint32_t MCP2515::beginAutoSpeed()
-{
-    Init(0, 16);
-}
-
-//this hardware has no enable pin per se
-uint32_t MCP2515::beginAutoSpeed(uint8_t enablePin)
 {
     Init(0, 16);
 }

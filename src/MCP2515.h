@@ -49,13 +49,10 @@ class MCP2515 : public CAN_COMMON
 
 
     //block of functions which must be overriden from CAN_COMMON to implement functionality for this hardware
-    int setRXFilter(uint32_t id, uint32_t mask, bool extended);
-	int setRXFilter(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended);
-	int watchFor(); //allow anything through
+	int _setFilterSpecific(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended);
+    int _setFilter(uint32_t id, uint32_t mask, bool extended);
 	uint32_t init(uint32_t ul_baudrate);
-	uint32_t begin(uint32_t baudrate, uint8_t enablePin);
     uint32_t beginAutoSpeed();
-    uint32_t beginAutoSpeed(uint8_t enablePin);
     uint32_t set_baudrate(uint32_t ul_baudrate);
     void setListenOnlyMode(bool state);
 	void enable();
