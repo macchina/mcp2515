@@ -144,6 +144,7 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   
   // Reset MCP2515 which puts it in configuration mode
   Reset();
+  delay(2);
 
   Write(CANINTE,0); //disable all interrupts during init
   Write(TXB0CTRL, 0); //reset transmit control
@@ -348,7 +349,7 @@ uint32_t MCP2515::set_baudrate(uint32_t ul_baudrate)
 void MCP2515::setListenOnlyMode(bool state)
 {
     if (state)
-        Mode(MODE_LOOPBACK);
+        Mode(MODE_LISTEN);
     else Mode(MODE_NORMAL);
 }
 
