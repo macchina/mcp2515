@@ -81,8 +81,8 @@ class MCP2515 : public CAN_COMMON
 	void EnqueueRX(CAN_FRAME& newFrame);
 	void EnqueueTX(CAN_FRAME& newFrame);
 	bool GetRXFrame(CAN_FRAME &frame);
-	void SetRXFilter(uint8_t filter, long FilterValue, bool ext);
-	void SetRXMask(uint8_t mask, long MaskValue);
+	void SetRXFilter(uint8_t filter, uint32_t FilterValue, bool ext);
+	void SetRXMask(uint8_t mask, uint32_t MaskValue);
     void GetRXFilter(uint8_t filter, uint32_t &filterVal, boolean &isExtended);
     void GetRXMask(uint8_t mask, uint32_t &filterVal);
 

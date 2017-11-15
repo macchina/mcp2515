@@ -144,7 +144,7 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   
   // Reset MCP2515 which puts it in configuration mode
   Reset();
-  delay(2);
+  //delay(2);
 
   Write(CANINTE,0); //disable all interrupts during init
   Write(TXB0CTRL, 0); //reset transmit control
@@ -230,6 +230,9 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   Write(CNF2, ((BTLMODE << 7) | (SAMPLE << 6) | ((PHSEG1-1) << 3) | (PRSEG-1)));
   Write(CNF3, (B10000000 | (PHSEG2-1)));
   Write(TXRTSCTRL,0);
+
+  Write(CNF1, data);
+  delay(1);
   
   if(!autoBaud) {
     // Return to Normal mode
@@ -612,17 +615,20 @@ bool MCP2515::Mode(byte mode) {
 //thereafter 
 */
 void MCP2515::InitFilters(bool permissive) {
-	long value;
+	uint32_t value;
+	uint32_t value32;
 	if (permissive) {
 		value = 0;
+        value32 = 0;
 	}	
 	else {
 		value = 0x7FF; //all 11 bits set
+        value32 = 0x1FFFFFFF; //all 29 bits set
 	}
-	SetRXMask(MASK0, value);
+	SetRXMask(MASK0, value32);
 	SetRXMask(MASK1, value);
-	SetRXFilter(FILTER0, value, 0);
-	SetRXFilter(FILTER1, value, 0);
+	SetRXFilter(FILTER0, value32, 1);
+	SetRXFilter(FILTER1, value32, 1);
 	SetRXFilter(FILTER2, value, 0);
 	SetRXFilter(FILTER3, value, 0);
 	SetRXFilter(FILTER4, value, 0);
@@ -634,7 +640,7 @@ mask = either MASK0 or MASK1
 MaskValue is either an 11 or 29 bit mask value to set 
 Note that maskes do not store whether they'd be standard or extended. Filters do that. It's a little confusing
 */
-void MCP2515::SetRXMask(uint8_t mask, long MaskValue) {
+void MCP2515::SetRXMask(uint8_t mask, uint32_t MaskValue) {
 	uint8_t temp_buff[4];
 	uint8_t oldMode;
 	
@@ -659,7 +665,7 @@ ext is true if this filter should apply to extended frames or false if it should
 Do note that, while this function looks a lot like the mask setting function is is NOT identical
 It might be able to be though... The setting of EXIDE would probably just be ignored by the mask
 */
-void MCP2515::SetRXFilter(uint8_t filter, long FilterValue, bool ext) {
+void MCP2515::SetRXFilter(uint8_t filter, uint32_t FilterValue, bool ext) {
 	uint8_t temp_buff[4];
 	uint8_t oldMode;
 		
