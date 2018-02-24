@@ -212,12 +212,12 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   // Programming requirements
   if(PRSEG + PHSEG1 < PHSEG2) 
   {
-      SerialUSB.println("PRSEG + PHSEG1 less than PHSEG2!");
+      //SerialUSB.println("PRSEG + PHSEG1 less than PHSEG2!");
       return false;
   }
   if(PHSEG2 <= SJW) 
   {
-      SerialUSB.println("PHSEG2 less than SJW");
+      //SerialUSB.println("PHSEG2 less than SJW");
       return false;
   }
   
@@ -238,14 +238,14 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
     // Return to Normal mode
     if(!Mode(MODE_NORMAL)) 
     {
-        SerialUSB.println("Could not enter normal mode");
+        //SerialUSB.println("Could not enter normal mode");
         return false;
     }
   } else {
     // Set to Listen Only mode
     if(!Mode(MODE_LISTEN)) 
     {
-        SerialUSB.println("Could not enter listen only mode");
+        //SerialUSB.println("Could not enter listen only mode");
         return false;
     }
   }
@@ -257,8 +257,8 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   if (rtn == data) return true;
   else 
   {
-    SerialUSB.println(data, HEX);
-    SerialUSB.println(rtn, HEX);
+    //SerialUSB.println(data, HEX);
+    //SerialUSB.println(rtn, HEX);
     return false;
   }
 
