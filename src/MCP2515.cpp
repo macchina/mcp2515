@@ -35,7 +35,7 @@
 
 SPISettings canSPISettings(1000000, MSBFIRST, SPI_MODE0);
 
-MCP2515::MCP2515(uint8_t CS_Pin, uint8_t INT_Pin) {
+MCP2515::MCP2515(uint8_t CS_Pin, uint8_t INT_Pin) : CAN_COMMON(6) {
   pinMode(CS_Pin, OUTPUT);
   digitalWrite(CS_Pin,HIGH);
   pinMode(INT_Pin,INPUT);
@@ -144,6 +144,7 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   
   // Reset MCP2515 which puts it in configuration mode
   Reset();
+  //delay(2);
 
   Write(CANINTE,0); //disable all interrupts during init
   Write(TXB0CTRL, 0); //reset transmit control
@@ -211,12 +212,12 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   // Programming requirements
   if(PRSEG + PHSEG1 < PHSEG2) 
   {
-      SerialUSB.println("PRSEG + PHSEG1 less than PHSEG2!");
+      //SerialUSB.println("PRSEG + PHSEG1 less than PHSEG2!");
       return false;
   }
   if(PHSEG2 <= SJW) 
   {
-      SerialUSB.println("PHSEG2 less than SJW");
+      //SerialUSB.println("PHSEG2 less than SJW");
       return false;
   }
   
@@ -229,19 +230,22 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   Write(CNF2, ((BTLMODE << 7) | (SAMPLE << 6) | ((PHSEG1-1) << 3) | (PRSEG-1)));
   Write(CNF3, (B10000000 | (PHSEG2-1)));
   Write(TXRTSCTRL,0);
+
+  Write(CNF1, data);
+  delay(1);
   
   if(!autoBaud) {
     // Return to Normal mode
     if(!Mode(MODE_NORMAL)) 
     {
-        SerialUSB.println("Could not enter normal mode");
+        //SerialUSB.println("Could not enter normal mode");
         return false;
     }
   } else {
     // Set to Listen Only mode
     if(!Mode(MODE_LISTEN)) 
     {
-        SerialUSB.println("Could not enter listen only mode");
+        //SerialUSB.println("Could not enter listen only mode");
         return false;
     }
   }
@@ -253,12 +257,128 @@ bool MCP2515::_init(uint32_t CAN_Bus_Speed, uint8_t Freq, uint8_t SJW, bool auto
   if (rtn == data) return true;
   else 
   {
-    SerialUSB.println(data, HEX);
-    SerialUSB.println(rtn, HEX);
+    //SerialUSB.println(data, HEX);
+    //SerialUSB.println(rtn, HEX);
     return false;
   }
 
   return false;
+}
+
+uint16_t MCP2515::available()
+{
+	int val;
+	val = rx_frame_read_pos - rx_frame_write_pos;
+	//Now, because this is a cyclic buffer it is possible that the ordering was reversed
+	//So, handle that case
+	if (val < 0) val += 8;
+}
+
+int MCP2515::_setFilter(uint32_t id, uint32_t mask, bool extended)
+{
+    uint32_t filterVal;
+    boolean isExtended;
+
+    for (int i = 0; i < 6; i++)
+    {
+        GetRXFilter(i, filterVal, isExtended);
+        if (filterVal == 0) //empty filter. Let's fill it and leave
+        {
+            if (i < 2)
+            {
+                GetRXMask(MASK0, filterVal);
+                if (filterVal == 0) filterVal = mask;
+                filterVal &= mask;
+                SetRXMask(MASK0, filterVal);
+            }
+            else
+            {
+                GetRXMask(MASK1, filterVal);
+                if (filterVal == 0) filterVal = mask;
+                filterVal &= mask;
+                SetRXMask(MASK1, filterVal);
+            }
+            if (i < 3)
+                SetRXFilter(FILTER0 + (i * 4), id, extended);
+            else
+                SetRXFilter(FILTER3 + ((i-3) * 4), id, extended);
+            return i;
+        }
+    }
+
+    //if we got here then there were no free filters. Return value of deaaaaath!
+    return -1;
+}
+
+//we don't exactly have mailboxes, we have filters (6 of them) but it's the same basic idea
+int MCP2515::_setFilterSpecific(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended)
+{
+    uint32_t oldMask;
+    if (mailbox < 2) //MASK0
+    {
+        GetRXMask(MASK0, oldMask);
+        oldMask &= mask;
+        SetRXMask(MASK0, oldMask);
+        
+    }
+    else //MASK1
+    {
+        GetRXMask(MASK1, oldMask);
+        oldMask &= mask;
+        SetRXMask(MASK0, oldMask);
+        
+    }
+    if (mailbox < 3)
+        SetRXFilter(FILTER0 + (mailbox * 4), id, extended);
+    else
+        SetRXFilter(FILTER3 + ((mailbox-3) * 4), id, extended);
+}
+
+uint32_t MCP2515::init(uint32_t ul_baudrate)
+{
+    Init(ul_baudrate, 16);
+}
+
+uint32_t MCP2515::beginAutoSpeed()
+{
+    Init(0, 16);
+}
+
+uint32_t MCP2515::set_baudrate(uint32_t ul_baudrate)
+{
+    Init(ul_baudrate, 16);
+}
+
+void MCP2515::setListenOnlyMode(bool state)
+{
+    if (state)
+        Mode(MODE_LISTEN);
+    else Mode(MODE_NORMAL);
+}
+
+void MCP2515::enable()
+{
+    Mode(MODE_NORMAL);
+}
+
+void MCP2515::disable()
+{
+    Mode(MODE_SLEEP);
+}
+
+bool MCP2515::sendFrame(CAN_FRAME& txFrame)
+{
+    EnqueueTX(txFrame);
+}
+
+bool MCP2515::rx_avail()
+{
+    return available()>0?true:false;
+}
+
+uint32_t MCP2515::get_rx_buff(CAN_FRAME &msg)
+{
+    return GetRXFrame(msg);
 }
 
 void MCP2515::Reset() {
@@ -294,12 +414,12 @@ void MCP2515::Read(uint8_t address, uint8_t data[], uint8_t bytes) {
   SPI.endTransaction();
 }
 
-Frame MCP2515::ReadBuffer(uint8_t buffer) {
+CAN_FRAME MCP2515::ReadBuffer(uint8_t buffer) {
  
   // Reads an entire RX buffer.
   // buffer should be either RXB0 or RXB1
   
-  Frame message;
+  CAN_FRAME message;
   
   SPI.beginTransaction(canSPISettings);
   digitalWrite(_CS,LOW);
@@ -365,7 +485,7 @@ void MCP2515::SendBuffer(uint8_t buffers) {
   SPI.endTransaction();
 }
 
-void MCP2515::LoadBuffer(uint8_t buffer, Frame *message) {
+void MCP2515::LoadBuffer(uint8_t buffer, CAN_FRAME *message) {
  
   // buffer should be one of TXB0, TXB1 or TXB2
   if(buffer==TXB0) buffer = 0; //the values we need are 0, 2, 4 TXB1 and TXB2 are already 2 / 4
@@ -495,17 +615,20 @@ bool MCP2515::Mode(byte mode) {
 //thereafter 
 */
 void MCP2515::InitFilters(bool permissive) {
-	long value;
+	uint32_t value;
+	uint32_t value32;
 	if (permissive) {
 		value = 0;
+        value32 = 0;
 	}	
 	else {
 		value = 0x7FF; //all 11 bits set
+        value32 = 0x1FFFFFFF; //all 29 bits set
 	}
-	SetRXMask(MASK0, value, 0);
-	SetRXMask(MASK1, value, 0);
-	SetRXFilter(FILTER0, value, 0);
-	SetRXFilter(FILTER1, value, 0);
+	SetRXMask(MASK0, value32);
+	SetRXMask(MASK1, value);
+	SetRXFilter(FILTER0, value32, 1);
+	SetRXFilter(FILTER1, value32, 1);
 	SetRXFilter(FILTER2, value, 0);
 	SetRXFilter(FILTER3, value, 0);
 	SetRXFilter(FILTER4, value, 0);
@@ -514,29 +637,21 @@ void MCP2515::InitFilters(bool permissive) {
 
 /*
 mask = either MASK0 or MASK1
-MaskValue is either an 11 or 29 bit mask value to set
-ext is true if the mask is supposed to be extended (29 bit)
+MaskValue is either an 11 or 29 bit mask value to set 
+Note that maskes do not store whether they'd be standard or extended. Filters do that. It's a little confusing
 */
-void MCP2515::SetRXMask(uint8_t mask, long MaskValue, bool ext) {
+void MCP2515::SetRXMask(uint8_t mask, uint32_t MaskValue) {
 	uint8_t temp_buff[4];
 	uint8_t oldMode;
 	
 	oldMode = Read(CANSTAT);
 	Mode(MODE_CONFIG); //have to be in config mode to change mask
 	
-	if (ext) { //fill out all 29 bits
-		temp_buff[0] = byte((MaskValue << 3) >> 24);
-		temp_buff[1] = byte((MaskValue << 11) >> 24) & B11100000;
-		temp_buff[1] |= byte((MaskValue << 14) >> 30);
-		temp_buff[2] = byte((MaskValue << 16)>>24);
-		temp_buff[3] = byte((MaskValue << 24)>>24);
-	}
-	else { //make sure to set mask as 11 bit standard mask
-		temp_buff[0] = byte((MaskValue << 21)>>24);
-		temp_buff[1] = byte((MaskValue << 29) >> 24) & B11100000;
-		temp_buff[2] = 0;
-		temp_buff[3] = 0;
-	}
+    temp_buff[0] = byte((MaskValue << 3) >> 24);
+	temp_buff[1] = byte((MaskValue << 11) >> 24) & B11100000;
+	temp_buff[1] |= byte((MaskValue << 14) >> 30);
+	temp_buff[2] = byte((MaskValue << 16)>>24);
+	temp_buff[3] = byte((MaskValue << 24)>>24);
 	
 	Write(mask, temp_buff, 4); //send the four byte mask out to the proper address
 	
@@ -550,7 +665,7 @@ ext is true if this filter should apply to extended frames or false if it should
 Do note that, while this function looks a lot like the mask setting function is is NOT identical
 It might be able to be though... The setting of EXIDE would probably just be ignored by the mask
 */
-void MCP2515::SetRXFilter(uint8_t filter, long FilterValue, bool ext) {
+void MCP2515::SetRXFilter(uint8_t filter, uint32_t FilterValue, bool ext) {
 	uint8_t temp_buff[4];
 	uint8_t oldMode;
 		
@@ -578,8 +693,56 @@ void MCP2515::SetRXFilter(uint8_t filter, long FilterValue, bool ext) {
 	Mode(oldMode);
 }
 
+void MCP2515::GetRXFilter(uint8_t filter, uint32_t &filterVal, boolean &isExtended)
+{
+    uint8_t temp_buff[4];
+	uint8_t oldMode;
+		
+	oldMode = Read(CANSTAT);
+
+	Mode(MODE_CONFIG); //have to be in config mode to change mask
+
+    Read(filter, temp_buff, 4);
+
+    //these 11 bits are used either way and stored the same way either way
+    filterVal = temp_buff[0] << 3;
+    filterVal |= temp_buff[1] >> 5;
+    isExtended = false;
+
+    if (temp_buff[1] & B00001000) //extended / 29 bit filter - get the remaining 18 bits we need
+    {
+        isExtended = true;
+        filterVal |= (temp_buff[1] & 3) << 27;
+        filterVal |= temp_buff[2] << 19;
+        filterVal |= temp_buff[3] << 11;
+    }
+
+	Mode(oldMode);
+}
+
+void MCP2515::GetRXMask(uint8_t mask, uint32_t &filterVal)
+{
+    uint8_t temp_buff[4];
+	uint8_t oldMode;
+		
+	oldMode = Read(CANSTAT);
+
+	Mode(MODE_CONFIG); //have to be in config mode to change mask
+
+    Read(mask, temp_buff, 4);
+
+    filterVal = temp_buff[0] << 3;
+    filterVal |= temp_buff[1] >> 5;
+    filterVal |= (temp_buff[1] & 3) << 27;
+    filterVal |= temp_buff[2] << 19;
+    filterVal |= temp_buff[3] << 11;
+
+	Mode(oldMode);
+}
+
+
 //Places the given frame into the receive queue
-void MCP2515::EnqueueRX(Frame& newFrame) {
+void MCP2515::EnqueueRX(CAN_FRAME& newFrame) {
 	uint8_t counter;
 	rx_frames[rx_frame_write_pos].id = newFrame.id;
 	rx_frames[rx_frame_write_pos].rtr = newFrame.rtr;
@@ -593,7 +756,7 @@ void MCP2515::EnqueueRX(Frame& newFrame) {
 //Well, maybe. If there is currently an open hardware buffer
 //it will place it into hardware immediately instead of using
 //the software queue
-void MCP2515::EnqueueTX(Frame& newFrame) {
+void MCP2515::EnqueueTX(CAN_FRAME& newFrame) {
 	uint8_t counter;
 	uint8_t status = Status() & 0b01010100; //mask for only the transmit buffer empty bits
 	
@@ -628,7 +791,7 @@ void MCP2515::EnqueueTX(Frame& newFrame) {
 	}		
 }
 
-bool MCP2515::GetRXFrame(Frame &frame) {
+bool MCP2515::GetRXFrame(CAN_FRAME &frame) {
 	uint8_t counter;
 	if (rx_frame_read_pos != rx_frame_write_pos) {
 		frame.id = rx_frames[rx_frame_read_pos].id;
@@ -643,7 +806,8 @@ bool MCP2515::GetRXFrame(Frame &frame) {
 }
 
 void MCP2515::intHandler(void) {
-    Frame message;
+    CAN_FRAME message;
+    uint32_t ctrlVal;
     // determine which interrupt flags have been set
     uint8_t interruptFlags = Read(CANINTF);
     //Now, acknowledge the interrupts by clearing the intf bits
@@ -652,17 +816,19 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & RX0IF) {
       // read from RX buffer 0
 		message = ReadBuffer(RXB0);
-     	EnqueueRX(message);
+        ctrlVal = Read(RXB0CTRL);
+        handleFrameDispatch(&message, ctrlVal & 1);
     }
     if(interruptFlags & RX1IF) {
-      // read from RX buffer 1
-      message = ReadBuffer(RXB1);
-      EnqueueRX(message);
+        // read from RX buffer 1
+        message = ReadBuffer(RXB1);
+        ctrlVal = Read(RXB1CTRL);
+        handleFrameDispatch(&message, ctrlVal & 7);
     }
     if(interruptFlags & TX0IF) {
 		// TX buffer 0 sent
        if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB0, (Frame *)&tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB0, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 		   	SendBuffer(TXB0);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	   }
@@ -670,7 +836,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX1IF) {
 		// TX buffer 1 sent
 	  if (tx_frame_read_pos != tx_frame_write_pos) {
-		  LoadBuffer(TXB1, (Frame *)&tx_frames[tx_frame_read_pos]);
+		  LoadBuffer(TXB1, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 		  SendBuffer(TXB1);
 		  tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 	  }
@@ -678,7 +844,7 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & TX2IF) {
 		// TX buffer 2 sent
 		if (tx_frame_read_pos != tx_frame_write_pos) {
-			LoadBuffer(TXB2, (Frame *)&tx_frames[tx_frame_read_pos]);
+			LoadBuffer(TXB2, (CAN_FRAME *)&tx_frames[tx_frame_read_pos]);
 			SendBuffer(TXB2);
 			tx_frame_read_pos = (tx_frame_read_pos + 1) % 8;
 		}
@@ -686,8 +852,8 @@ void MCP2515::intHandler(void) {
     if(interruptFlags & ERRIF) {
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		  running = 0;
-		  InitBuffers();
-		  Init(savedBaud, savedFreq);
+		  //InitBuffers();
+		  //Init(savedBaud, savedFreq);
 	  }
     }
     if(interruptFlags & MERRF) {
@@ -696,99 +862,47 @@ void MCP2515::intHandler(void) {
       // if message is lost TXBnCTRL.MLOA will be set
       if (running == 1) { //if there was an error and we had been initialized then try to fix it by reinitializing
 		running = 0;
-		InitBuffers();
-		Init(savedBaud, savedFreq);
+		//InitBuffers();
+		//Init(savedBaud, savedFreq);
 	  }	  
     }
 }
 
-int MCP2515::watchFor()
+void MCP2515::handleFrameDispatch(CAN_FRAME *frame, int filterHit)
 {
-	SetRXMask(MASK0, 0, true);
-	SetRXMask(MASK1, 0, false);
-	SetRXFilter(FILTER0, 0, true);
-	SetRXFilter(FILTER2, 0, false);
-	return 0;
-}
+    CANListener *thisListener;
 
-int MCP2515::watchFor(uint32_t id)
-{
-	if (id > 0x7FF) SetRXFilter(id, 0x1FFFFFFF, true);
-	else SetRXFilter(id, 0x7FF, false);
-	return 0;
-}
-
-int MCP2515::watchFor(uint32_t id, uint32_t mask)
-{
-	if (id > 0x7FF) SetRXFilter(id, mask, true);
-	else SetRXFilter(id, mask, false);
-	return 0;
-}
-
-int MCP2515::watchForRange(uint32_t id1, uint32_t id2)
-{
-	uint32_t id = 0;
-	uint32_t mask = 0;
-	uint32_t temp;
-
-	if (id1 > id2)
-	{   //looks funny I know. In place swap with no temporary storage. Neato!
-		id1 = id1 ^ id2;
-		id2 = id1 ^ id2; //note difference here.
-		id1 = id1 ^ id2;
-	}
-
-	id = id1;
-
-	if (id2 <= 0x7FF) mask = 0x7FF;
-	else mask = 0x1FFFFFFF;
-
-	/* Here is a quick overview of the theory behind these calculations.
-	   We start with mask set to 11 or 29 set bits (all 1's)
-	   and id set to the lowest ID in the range.
-	   From there we go through every single ID possible in the range. For each ID
-	   we AND with the current ID. At the end only bits that never changed and were 1's
-	   will still be 1's. This yields the ID we can match against to let these frames through
-	   The mask is calculated by finding the bitfield difference between the lowest ID and
-	   the current ID. This calculation will be 1 anywhere the bits were different. We invert
-	   this so that it is 1 anywhere the bits where the same. Then we AND with the current Mask.
-	   At the end the mask will be 1 anywhere the bits never changed. This is the perfect mask.
-	*/
-	for (int c = id1; c <= id2; c++)
+    //First, try to send a callback. If no callback registered then buffer the frame.
+    if (cbCANFrame[filterHit]) 
 	{
-		id &= c;
-		temp = (~(id1 ^ c)) & 0x1FFFFFFF;
-		mask &= temp;
+		(*cbCANFrame[filterHit])(frame);
+        return;
 	}
-	//output of the above crazy loop is actually the end result.
-	if (id > 0x7FF) SetRXFilter(id, mask, true);
-	else SetRXFilter(id, mask, false);
-	return 0;
-
-}
-/*
-void MCP2515::attachCANInterrupt(void (*cb)(CAN_FRAME *))
-{
-	cbCANFrame[6] = cb;
-}
-
-void MCP2515::attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *))
-{
-	if ((filter < 0) || (filter > 5)) return;
-	cbCANFrame[filter] = cb;
-}
-
-void MCP2515::detachCANInterrupt(uint8_t filter)
-{
-	if ((filter < 0) || (filter > 5)) return;
-	cbCANFrame[filter] = 0;
-}
-*/
-int MCP2515::available()
-{
-	int val;
-	val = rx_frame_read_pos - rx_frame_write_pos;
-	//Now, because this is a cyclic buffer it is possible that the ordering was reversed
-	//So, handle that case
-	if (val < 0) val += 8;
+	else if (cbGeneral) 
+	{
+		(*cbGeneral)(frame);
+        return;
+	}
+	else
+	{
+		for (int listenerPos = 0; listenerPos < SIZE_LISTENERS; listenerPos++)
+		{
+			thisListener = listener[listenerPos];
+			if (thisListener != NULL)
+			{
+				if (thisListener->isCallbackActive(filterHit)) 
+				{
+					thisListener->gotFrame(frame, filterHit);
+                    return;
+				}
+				else if (thisListener->isCallbackActive(numFilters)) //global catch-all 
+				{
+					thisListener->gotFrame(frame, -1);
+                    return;
+				}
+			}
+		}
+	}
+	//if none of the callback types caught this frame then queue it in the buffer
+    EnqueueRX(*frame);
 }

@@ -33,10 +33,11 @@
 
 #include "Arduino.h"
 #include "MCP2515_defs.h"
+#include <can_common.h>
 
 //#define DEBUG_SETUP
 
-class MCP2515
+class MCP2515 : public CAN_COMMON
 {
   public:
 	// Constructor defining which pins to use for CS, RESET and INT
@@ -45,15 +46,30 @@ class MCP2515
 	// Overloaded initialization function
 	int Init(uint32_t baud, uint8_t freq);
 	int Init(uint32_t baud, uint8_t freq, uint8_t sjw);
+
+
+    //block of functions which must be overriden from CAN_COMMON to implement functionality for this hardware
+	int _setFilterSpecific(uint8_t mailbox, uint32_t id, uint32_t mask, bool extended);
+    int _setFilter(uint32_t id, uint32_t mask, bool extended);
+	uint32_t init(uint32_t ul_baudrate);
+    uint32_t beginAutoSpeed();
+    uint32_t set_baudrate(uint32_t ul_baudrate);
+    void setListenOnlyMode(bool state);
+	void enable();
+	void disable();
+	bool sendFrame(CAN_FRAME& txFrame);
+	bool rx_avail();
+	uint16_t available(); //like rx_avail but returns the number of waiting frames
+	uint32_t get_rx_buff(CAN_FRAME &msg);
 	
 	// Basic MCP2515 SPI Command Set
     void Reset();
     byte Read(uint8_t address);
     void Read(uint8_t address, uint8_t data[], uint8_t bytes);
-	Frame ReadBuffer(uint8_t buffer);
+	CAN_FRAME ReadBuffer(uint8_t buffer);
 	void Write(uint8_t address, uint8_t data);
 	void Write(uint8_t address, uint8_t data[], uint8_t bytes);
-	void LoadBuffer(uint8_t buffer, Frame *message);
+	void LoadBuffer(uint8_t buffer, CAN_FRAME *message);
 	void SendBuffer(uint8_t buffers);
 	uint8_t Status();
 	uint8_t RXStatus();
@@ -62,25 +78,20 @@ class MCP2515
 	// Extra functions
 	bool Interrupt(); // Expose state of INT pin
 	bool Mode(uint8_t mode); // Returns TRUE if mode change successful
-	void EnqueueRX(Frame& newFrame);
-	void EnqueueTX(Frame& newFrame);
-	bool GetRXFrame(Frame &frame);
-	void SetRXFilter(uint8_t filter, long FilterValue, bool ext);
-	void SetRXMask(uint8_t mask, long MaskValue, bool ext);
+	void EnqueueRX(CAN_FRAME& newFrame);
+	void EnqueueTX(CAN_FRAME& newFrame);
+	bool GetRXFrame(CAN_FRAME &frame);
+	void SetRXFilter(uint8_t filter, uint32_t FilterValue, bool ext);
+	void SetRXMask(uint8_t mask, uint32_t MaskValue);
+    void GetRXFilter(uint8_t filter, uint32_t &filterVal, boolean &isExtended);
+    void GetRXMask(uint8_t mask, uint32_t &filterVal);
+
 	void InitFilters(bool permissive);
 	void intHandler();
 	void InitBuffers();
-	int watchFor(); //allow anything through
-	int watchFor(uint32_t id); //allow just this ID through (automatic determination of extended status)
-	int watchFor(uint32_t id, uint32_t mask); //allow a range of ids through
-	int watchForRange(uint32_t id1, uint32_t id2); //try to allow the range from id1 to id2 - automatically determine base ID and mask
-	//void attachCANInterrupt(void (*cb)(CAN_FRAME *)); //alternative callname for setGeneralCallback
-	//void attachCANInterrupt(uint8_t filter, void (*cb)(CAN_FRAME *));
-	//void detachCANInterrupt(uint8_t filter);
-	int available(); //like rx_avail but returns the number of waiting frames
-
   private:
 	bool _init(uint32_t baud, uint8_t freq, uint8_t sjw, bool autoBaud);
+    void handleFrameDispatch(CAN_FRAME *frame, int filterHit);
     // Pin variables
 	uint8_t _CS;
 	uint8_t _INT;
@@ -88,11 +99,11 @@ class MCP2515
 	volatile uint8_t savedFreq;
 	volatile uint8_t running; //1 if out of init code, 0 if still trying to initialize (auto baud detecting)
     // Definitions for software buffers
-	volatile Frame rx_frames[8];
-	volatile Frame tx_frames[8];
+	volatile CAN_FRAME rx_frames[8];
+	volatile CAN_FRAME tx_frames[8];
 	volatile uint8_t rx_frame_read_pos, rx_frame_write_pos;
 	volatile uint8_t tx_frame_read_pos, tx_frame_write_pos;
-	//void (*cbCANFrame[7])(Frame *); //6 filters plus an optional catch all
+	//void (*cbCANFrame[7])(CAN_FRAME *); //6 filters plus an optional catch all
 };
 
 #endif
